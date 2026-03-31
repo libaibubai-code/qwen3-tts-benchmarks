@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+*.egg-info/
+
+# Benchmark results
+results/
+*.json
+
+# Audio files
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.pcm
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -282,6 +282,7 @@ async def run_benchmark(
     ref_texts: list[str],
     x_vector_only: bool = False,
     num_warmups: int = 3,
+    fixed_ref_audio: bool = False,
 ) -> BenchmarkResult:
     """Run benchmark at a given concurrency level.
     
@@ -295,6 +296,7 @@ async def run_benchmark(
         ref_texts: List of reference transcripts
         x_vector_only: Use x-vector only mode
         num_warmups: Number of warmup requests
+        fixed_ref_audio: If True, use only the first reference audio for all requests
     
     Returns:
         BenchmarkResult with aggregated metrics
@@ -350,7 +352,10 @@ async def run_benchmark(
     
     # Run benchmark with concurrency control
     print(f"  Running {num_prompts} requests with concurrency={max_concurrency}...")
-    print(f"  Using {len(ref_audios_b64)} reference audio sample(s)")
+    if fixed_ref_audio:
+        print(f"  Fixed reference audio: {ref_audios[0]} (all requests)")
+    else:
+        print(f"  Using {len(ref_audios_b64)} reference audio sample(s) (random selection)")
     print(f"  X-vector only mode: {x_vector_only}")
     
     semaphore = asyncio.Semaphore(max_concurrency)
@@ -358,8 +363,11 @@ async def run_benchmark(
     
     async def limited_request(prompt_idx: int):
         async with semaphore:
-            # Randomly select a reference audio for each request
-            ref_idx = random.randint(0, len(ref_audios_b64) - 1)
+            # Use fixed reference (first one) or randomly select
+            if fixed_ref_audio:
+                ref_idx = 0  # Always use first reference audio
+            else:
+                ref_idx = random.randint(0, len(ref_audios_b64) - 1)
             return await send_tts_request(
                 session, api_url, request_prompts[prompt_idx], model,
                 ref_audios_b64[ref_idx], ref_texts[ref_idx], x_vector_only,
@@ -503,6 +511,7 @@ async def main(args):
             ref_texts=args.ref_text,
             x_vector_only=args.x_vector_only,
             num_warmups=args.num_warmups,
+            fixed_ref_audio=args.fixed_ref_audio,
         )
         result.config_name = args.config_name
         all_results.append(asdict(result))
@@ -599,6 +608,13 @@ def parse_args():
         type=str,
         default="results",
         help="Directory to save results"
+    )
+    
+    # Reference audio selection mode
+    parser.add_argument(
+        "--fixed-ref-audio",
+        action="store_true",
+        help="Use only the first reference audio for all requests (default: random selection from provided audios)"
     )
     
     return parser.parse_args()

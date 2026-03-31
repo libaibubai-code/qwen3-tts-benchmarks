@@ -35,19 +35,29 @@ pip install aiohttp numpy tqdm
 # Single reference audio
 python bench_tts_serve_base.py \
     --host 127.0.0.1 --port 8000 \
+    --model Qwen/Qwen3-TTS-12Hz-1.7B-Base \
     --ref-audio /path/to/reference.wav \
     --ref-text "This is the reference transcript" \
     --num-prompts 50 \
     --max-concurrency 1 4 10
 
+# Different model variant (0.6B)
+python bench_tts_serve_base.py \
+    --model Qwen/Qwen3-TTS-12Hz-0.6B-Base \
+    --ref-audio reference.wav \
+    --ref-text "Reference transcript" \
+    --num-prompts 50
+
 # Multiple reference audios (randomly selected per request)
 python bench_tts_serve_base.py \
+    --model Qwen/Qwen3-TTS-12Hz-1.7B-Base \
     --ref-audio ref1.wav ref2.wav ref3.wav \
     --ref-text "Transcript 1" "Transcript 2" "Transcript 3" \
     --num-prompts 50
 
 # X-vector only mode (no ICL)
 python bench_tts_serve_base.py \
+    --model Qwen/Qwen3-TTS-12Hz-1.7B-Base \
     --ref-audio reference.wav \
     --ref-text "Reference transcript" \
     --x-vector-only \

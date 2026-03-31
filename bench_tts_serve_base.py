@@ -12,6 +12,7 @@ Usage:
     # Single reference audio
     python bench_tts_serve_base.py \
         --host 127.0.0.1 --port 8000 \
+        --model Qwen/Qwen3-TTS-12Hz-1.7B-Base \
         --ref-audio /path/to/reference.wav \
         --ref-text "This is the reference transcript" \
         --num-prompts 50 \
@@ -19,13 +20,16 @@ Usage:
 
     # Multiple reference audios (randomly selected per request)
     python bench_tts_serve_base.py \
+        --model Qwen/Qwen3-TTS-12Hz-0.6B-Base \
         --ref-audio ref1.wav ref2.wav ref3.wav \
         --ref-text "Transcript 1" "Transcript 2" "Transcript 3" \
         --num-prompts 50
 
     # X-vector only mode (no ICL)
     python bench_tts_serve_base.py \
+        --model Qwen/Qwen3-TTS-12Hz-1.7B-Base \
         --ref-audio reference.wav \
+        --ref-text "Reference transcript" \
         --x-vector-only \
         --num-prompts 50
 """
@@ -176,6 +180,7 @@ async def send_tts_request(
     session: aiohttp.ClientSession,
     api_url: str,
     prompt: str,
+    model: str,
     ref_audio_b64: str,
     ref_text: str,
     x_vector_only: bool = False,
@@ -189,6 +194,7 @@ async def send_tts_request(
         session: aiohttp session
         api_url: TTS endpoint URL
         prompt: Text to synthesize
+        model: Model name or path
         ref_audio_b64: Reference audio as base64 data URL or URL
         ref_text: Reference audio transcript
         x_vector_only: Use x-vector only mode (no ICL)
@@ -201,7 +207,7 @@ async def send_tts_request(
     """
     # Build payload for Qwen3-TTS-Base
     payload = {
-        "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+        "model": model,
         "input": prompt,
         "task_type": "Base",
         "ref_audio": ref_audio_b64,
@@ -271,6 +277,7 @@ async def run_benchmark(
     port: int,
     num_prompts: int,
     max_concurrency: int,
+    model: str,
     ref_audios: list[str],
     ref_texts: list[str],
     x_vector_only: bool = False,
@@ -283,6 +290,7 @@ async def run_benchmark(
         port: Server port
         num_prompts: Number of prompts to test
         max_concurrency: Maximum concurrent requests
+        model: Model name or path
         ref_audios: List of reference audio paths/URLs
         ref_texts: List of reference transcripts
         x_vector_only: Use x-vector only mode
@@ -321,6 +329,7 @@ async def run_benchmark(
     # Warmup phase
     if num_warmups > 0 and ref_audios_b64:
         print(f"  Warming up with {num_warmups} requests...")
+        print(f"  Model: {model}")
         warmup_prompt = PROMPTS[0]
         warmup_ref_audio = ref_audios_b64[0]
         warmup_ref_text = ref_texts[0]
@@ -329,7 +338,7 @@ async def run_benchmark(
         for i in range(num_warmups):
             warmup_tasks.append(
                 send_tts_request(
-                    session, api_url, warmup_prompt,
+                    session, api_url, warmup_prompt, model,
                     warmup_ref_audio, warmup_ref_text, x_vector_only
                 )
             )
@@ -352,7 +361,7 @@ async def run_benchmark(
             # Randomly select a reference audio for each request
             ref_idx = random.randint(0, len(ref_audios_b64) - 1)
             return await send_tts_request(
-                session, api_url, request_prompts[prompt_idx],
+                session, api_url, request_prompts[prompt_idx], model,
                 ref_audios_b64[ref_idx], ref_texts[ref_idx], x_vector_only,
                 pbar=pbar
             )
@@ -489,6 +498,7 @@ async def main(args):
             port=args.port,
             num_prompts=args.num_prompts,
             max_concurrency=concurrency,
+            model=args.model,
             ref_audios=args.ref_audio,
             ref_texts=args.ref_text,
             x_vector_only=args.x_vector_only,
@@ -520,6 +530,14 @@ def parse_args():
     # Server configuration
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Server hostname")
     parser.add_argument("--port", type=int, default=8000, help="Server port")
+    
+    # Model configuration
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+        help="Model name or path (e.g., Qwen/Qwen3-TTS-12Hz-1.7B-Base, Qwen/Qwen3-TTS-12Hz-0.6B-Base, or local path)"
+    )
     
     # Reference audio (required for Base task)
     parser.add_argument(

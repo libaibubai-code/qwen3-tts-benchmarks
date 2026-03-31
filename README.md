@@ -32,7 +32,7 @@ pip install aiohttp numpy tqdm
 ### Base Model Benchmark
 
 ```bash
-# Single reference audio
+# Single reference audio (all requests use the same reference)
 python bench_tts_serve_base.py \
     --host 127.0.0.1 --port 8000 \
     --model Qwen/Qwen3-TTS-12Hz-1.7B-Base \
@@ -54,6 +54,16 @@ python bench_tts_serve_base.py \
     --ref-audio ref1.wav ref2.wav ref3.wav \
     --ref-text "Transcript 1" "Transcript 2" "Transcript 3" \
     --num-prompts 50
+
+# Fixed reference audio for controlled concurrency testing
+# All concurrent requests use the same reference audio (first one)
+python bench_tts_serve_base.py \
+    --model Qwen/Qwen3-TTS-12Hz-1.7B-Base \
+    --ref-audio ref1.wav ref2.wav ref3.wav \
+    --ref-text "Transcript 1" "Transcript 2" "Transcript 3" \
+    --fixed-ref-audio \
+    --num-prompts 50 \
+    --max-concurrency 1 4 10
 
 # X-vector only mode (no ICL)
 python bench_tts_serve_base.py \
